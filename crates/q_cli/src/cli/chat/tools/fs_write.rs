@@ -68,6 +68,12 @@ impl FsWrite {
                     style::ResetColor,
                     style::Print("\n"),
                 )?;
+                // Ensure file ends with a newline if it doesn't already
+                let file_text = if !file_text.ends_with('\n') {
+                    format!("{}\n", file_text)
+                } else {
+                    file_text
+                };
                 fs.write(&path, file_text.as_bytes()).await?;
                 Ok(Default::default())
             },
@@ -87,6 +93,12 @@ impl FsWrite {
                     0 => Err(eyre!("no occurrences of \"{old_str}\" were found")),
                     1 => {
                         let file = file.replacen(old_str, new_str, 1);
+                        // Ensure file ends with a newline if it doesn't already
+                        let file = if !file.ends_with('\n') {
+                            format!("{}\n", file)
+                        } else {
+                            file
+                        };
                         fs.write(path, file).await?;
                         Ok(Default::default())
                     },
@@ -118,6 +130,12 @@ impl FsWrite {
                     i += line_len;
                 }
                 file.insert_str(i, new_str);
+                // Ensure file ends with a newline if it doesn't already
+                let file = if !file.ends_with('\n') {
+                    format!("{}\n", file)
+                } else {
+                    file
+                };
                 fs.write(&path, &file).await?;
                 Ok(Default::default())
             },
@@ -369,7 +387,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(ctx.fs().read_to_string("/my-file").await.unwrap(), file_text);
+        assert_eq!(
+            ctx.fs().read_to_string("/my-file").await.unwrap(),
+            format!("{}\n", file_text)
+        );
 
         let file_text = "Goodbye, world!\nSee you later";
         let v = serde_json::json!({
@@ -383,7 +404,11 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(ctx.fs().read_to_string("/my-file").await.unwrap(), file_text);
+        // File should end with a newline
+        assert_eq!(
+            ctx.fs().read_to_string("/my-file").await.unwrap(),
+            format!("{}\n", file_text)
+        );
 
         let file_text = "This is a new string";
         let v = serde_json::json!({
@@ -397,7 +422,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(ctx.fs().read_to_string("/my-file").await.unwrap(), file_text);
+        assert_eq!(
+            ctx.fs().read_to_string("/my-file").await.unwrap(),
+            format!("{}\n", file_text)
+        );
     }
 
     #[tokio::test]
@@ -547,7 +575,7 @@ mod tests {
             .await
             .unwrap();
         let actual = ctx.fs().read_to_string(test_file_path).await.unwrap();
-        assert_eq!(actual, format!("{}{}", test_file_contents, new_str),);
+        assert_eq!(actual, format!("{}{}\n", test_file_contents, new_str));
 
         // Then, test prepending
         let v = serde_json::json!({
@@ -562,7 +590,7 @@ mod tests {
             .await
             .unwrap();
         let actual = ctx.fs().read_to_string(test_file_path).await.unwrap();
-        assert_eq!(actual, format!("{}{}{}", new_str, test_file_contents, new_str),);
+        assert_eq!(actual, format!("{}{}{}\n", new_str, test_file_contents, new_str));
     }
 
     #[test]
